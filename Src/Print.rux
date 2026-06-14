@@ -4,7 +4,7 @@
     Licensed under the MIT License
 */
 
-/*@[Target("BSD")]
+@[Target("BSD")]
 import BSD::{
     Func1,
     Func2,

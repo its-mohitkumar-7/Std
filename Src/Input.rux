@@ -4,13 +4,6 @@
     Licensed under the MIT License
 */
 
-/*@[Target("BSD")]
-import BSD::{
-    Func1,
-    Func2,
-    Func3
-};
-
 @[Target("Illumos")]
 import Illumos::{
     IsError,
@@ -49,7 +42,14 @@ module Std::Io {
         return String { data: null, length: 0 };
     }
 
-    @[Target("Illumos")]
+@[Target("BSD")]
+import BSD::{
+    Func1,
+    Func2,
+    Func3
+};
+
+@[Target("Illumos")]
     func ReadLine() -> String {
         var buf: char8[MaxInputLength];
         let count = Read(Stdin, buf.data, MaxInputLength);
