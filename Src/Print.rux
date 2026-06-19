@@ -40,6 +40,7 @@ import Windows::{
 };
 
 import Std::Display;
+import Std::Time::SystemTime;
 
 module Std::Io {
     func Print(value: int8) {
@@ -117,6 +118,36 @@ module Std::Io {
     func Print(value: char) {
         Print(ToString(value));
     }
+    
+    func PadTime2(n: uint16) -> String {
+    	if n < 10u16 {
+        	return Format("0{}", n);
+    	}
+    	return ToString(n);
+	}
+	
+	func PadTime3(n: uint16) -> String {
+    	if n < 10u16 {
+        	return Format("00{}", n);
+    	}
+    	if n < 100u16 {
+        	return Format("0{}", n);
+    	}
+    	return ToString(n);
+	}
+	
+	func Print(value: SystemTime) {
+    	Print(Format(
+        	"{}-{}-{} {}:{}:{}.{}",
+        	value.year,
+        	PadTime2(value.month),
+        	PadTime2(value.day),
+        	PadTime2(value.hour),
+        	PadTime2(value.minute),
+        	PadTime2(value.second),
+        	PadTime3(value.milliseconds)
+    	));
+	}
 
     @[Target("BSD")]
     func Print(string: *const char8, length: uint) {
@@ -371,4 +402,9 @@ module Std::Io {
         Print(format, args...);
         PrintLine();
     }
+    
+    func PrintLine(value: SystemTime) {
+    	Print(value);
+    	PrintLine();
+	}
 }
