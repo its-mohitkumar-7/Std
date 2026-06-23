@@ -177,15 +177,7 @@ module Std::Hash::Sha256 {
         *h7 += h;
     }
 
-    func hashBytesImpl(message: *const uint8, msgLen: uint) -> String {
-            var h0: uint32 = 0x6A09E667;
-            var h1: uint32 = 0xBB67AE85;
-            var h2: uint32 = 0x3C6EF372;
-            var h3: uint32 = 0xA54FF53A;
-            var h4: uint32 = 0x510E527F;
-            var h5: uint32 = 0x9B05688C;
-            var h6: uint32 = 0x1F83D9AB;
-            var h7: uint32 = 0x5BE0CD19;
+    func hashBytesImpl(message: *const uint8, msgLen: uint, h0: uint32, h1: uint32, h2: uint32, h3: uint32, h4: uint32, h5: uint32, h6: uint32, h7: uint32, digestSize: uint) -> String {
 
             let fullBlocks = msgLen / BlockSize;
             var blockIndex: uint = 0u;
@@ -239,12 +231,16 @@ module Std::Hash::Sha256 {
             writeU32BE(digest.data, 24u, h6);
             writeU32BE(digest.data, 28u, h7);
 
-            return Hex::EncodeBytes(digest.data as *const char8, DigestSize);
+            return Hex::EncodeBytes(digest.data as *const char8, digestSize);
     }
 
     extend Sha256 {
         func Hash(message: char8[]) -> String {
-            return hashBytesImpl(message.data as *const uint8, message.length);
+            return hashBytesImpl(message.data as *const uint8, message.length, 0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19, 32u);
         }
+    }
+
+    func Sha224(message: char8[]) -> String {
+        return hashBytesImpl(message.data as *const uint8, message.length, 0xC1059ED8, 0x367CD507, 0x3070DD17, 0xF70E5939, 0xFFC00B31, 0x68581511, 0x64F98FA7, 0xBEFA4FA4, 28u);
     }
 }

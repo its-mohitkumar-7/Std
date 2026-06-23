@@ -1,0 +1,564 @@
+/*
+    Rux standard library
+    Copyright © 2026 Rux Contributors
+    Licensed under the MIT License
+*/
+
+import Std::Hex;
+
+module Std::Hash::Blake1 {
+
+    func readU32BE(data: *const uint8, offset: uint) -> uint32 {
+        return ((data[offset + 0u] as uint32) << 24u32)
+            | ((data[offset + 1u] as uint32) << 16u32)
+            | ((data[offset + 2u] as uint32) << 8u32)
+            | (data[offset + 3u] as uint32);
+    }
+
+    func readU64BE(data: *const uint8, offset: uint) -> uint64 {
+        return ((data[offset + 0u] as uint64) << 56u32)
+            | ((data[offset + 1u] as uint64) << 48u32)
+            | ((data[offset + 2u] as uint64) << 40u32)
+            | ((data[offset + 3u] as uint64) << 32u32)
+            | ((data[offset + 4u] as uint64) << 24u32)
+            | ((data[offset + 5u] as uint64) << 16u32)
+            | ((data[offset + 6u] as uint64) << 8u32)
+            | (data[offset + 7u] as uint64);
+    }
+
+    func writeU32BE(data: *uint8, offset: uint, value: uint32) {
+        data[offset + 0u] = (value >> 24u32) as uint8;
+        data[offset + 1u] = (value >> 16u32) as uint8;
+        data[offset + 2u] = (value >> 8u32) as uint8;
+        data[offset + 3u] = value as uint8;
+    }
+
+    func writeU64BE(data: *uint8, offset: uint, value: uint64) {
+        data[offset + 0u] = (value >> 56u32) as uint8;
+        data[offset + 1u] = (value >> 48u32) as uint8;
+        data[offset + 2u] = (value >> 40u32) as uint8;
+        data[offset + 3u] = (value >> 32u32) as uint8;
+        data[offset + 4u] = (value >> 24u32) as uint8;
+        data[offset + 5u] = (value >> 16u32) as uint8;
+        data[offset + 6u] = (value >> 8u32) as uint8;
+        data[offset + 7u] = value as uint8;
+    }
+
+    func rotr32(x: uint32, n: uint32) -> uint32 {
+        return (x >> n) | (x << (32u32 - n));
+    }
+
+    func rotr64(x: uint64, n: uint32) -> uint64 {
+        return (x >> n) | (x << (64u32 - n));
+    }
+
+    func c32Val(idx: uint) -> uint32 {
+        if idx == 0u { return 0x243F6A88u32; }
+        if idx == 1u { return 0x85A308D3u32; }
+        if idx == 2u { return 0x13198A2Eu32; }
+        if idx == 3u { return 0x03707344u32; }
+        if idx == 4u { return 0xA4093822u32; }
+        if idx == 5u { return 0x299F31D0u32; }
+        if idx == 6u { return 0x082EFA98u32; }
+        if idx == 7u { return 0xEC4E6C89u32; }
+        if idx == 8u { return 0x452821E6u32; }
+        if idx == 9u { return 0x38D01377u32; }
+        if idx == 10u { return 0xBE5466CFu32; }
+        if idx == 11u { return 0x34E90C6Cu32; }
+        if idx == 12u { return 0xC0AC29B7u32; }
+        if idx == 13u { return 0xC97C50DDu32; }
+        if idx == 14u { return 0x3F84D5B5u32; }
+        return 0xB5470917u32;
+    }
+
+    func c64Val(idx: uint) -> uint64 {
+        if idx == 0u { return 0x243F6A8885A308D3u64; }
+        if idx == 1u { return 0x13198A2E03707344u64; }
+        if idx == 2u { return 0xA4093822299F31D0u64; }
+        if idx == 3u { return 0x082EFA98EC4E6C89u64; }
+        if idx == 4u { return 0x452821E638D01377u64; }
+        if idx == 5u { return 0xBE5466CF34E90C6Cu64; }
+        if idx == 6u { return 0xC0AC29B7C97C50DDu64; }
+        if idx == 7u { return 0x3F84D5B5B5470917u64; }
+        if idx == 8u { return 0x9216D5D98979FB1Bu64; }
+        if idx == 9u { return 0xD1310BA698DFB5ACu64; }
+        if idx == 10u { return 0x2FFD72DBD01ADFB7u64; }
+        if idx == 11u { return 0xB8E1AFED6A267E96u64; }
+        if idx == 12u { return 0xBA7C9045F12C7F99u64; }
+        if idx == 13u { return 0x24A19947B3916CF7u64; }
+        if idx == 14u { return 0x0801F2E2858EFC16u64; }
+        return 0x636920D871574E69u64;
+    }
+
+    func sigmaVal(round: uint, idx: uint) -> uint {
+        let r = round % 10u;
+        if r == 0u {
+            if idx == 0u { return 0u; } if idx == 1u { return 1u; } if idx == 2u { return 2u; } if idx == 3u { return 3u; }
+            if idx == 4u { return 4u; } if idx == 5u { return 5u; } if idx == 6u { return 6u; } if idx == 7u { return 7u; }
+            if idx == 8u { return 8u; } if idx == 9u { return 9u; } if idx == 10u { return 10u; } if idx == 11u { return 11u; }
+            return 12u + idx - 12u;
+        }
+        if r == 1u {
+            if idx == 0u { return 14u; } if idx == 1u { return 10u; } if idx == 2u { return 4u; } if idx == 3u { return 8u; }
+            if idx == 4u { return 9u; } if idx == 5u { return 15u; } if idx == 6u { return 13u; } if idx == 7u { return 6u; }
+            if idx == 8u { return 1u; } if idx == 9u { return 12u; } if idx == 10u { return 0u; } if idx == 11u { return 2u; }
+            if idx == 12u { return 11u; } if idx == 13u { return 7u; } if idx == 14u { return 5u; }
+            return 3u;
+        }
+        if r == 2u {
+            if idx == 0u { return 11u; } if idx == 1u { return 8u; } if idx == 2u { return 12u; } if idx == 3u { return 0u; }
+            if idx == 4u { return 5u; } if idx == 5u { return 2u; } if idx == 6u { return 15u; } if idx == 7u { return 13u; }
+            if idx == 8u { return 10u; } if idx == 9u { return 14u; } if idx == 10u { return 3u; } if idx == 11u { return 6u; }
+            if idx == 12u { return 7u; } if idx == 13u { return 1u; } if idx == 14u { return 9u; }
+            return 4u;
+        }
+        if r == 3u {
+            if idx == 0u { return 7u; } if idx == 1u { return 9u; } if idx == 2u { return 3u; } if idx == 3u { return 1u; }
+            if idx == 4u { return 13u; } if idx == 5u { return 12u; } if idx == 6u { return 11u; } if idx == 7u { return 14u; }
+            if idx == 8u { return 2u; } if idx == 9u { return 6u; } if idx == 10u { return 5u; } if idx == 11u { return 10u; }
+            if idx == 12u { return 4u; } if idx == 13u { return 0u; } if idx == 14u { return 15u; }
+            return 8u;
+        }
+        if r == 4u {
+            if idx == 0u { return 9u; } if idx == 1u { return 0u; } if idx == 2u { return 5u; } if idx == 3u { return 7u; }
+            if idx == 4u { return 2u; } if idx == 5u { return 4u; } if idx == 6u { return 10u; } if idx == 7u { return 15u; }
+            if idx == 8u { return 14u; } if idx == 9u { return 1u; } if idx == 10u { return 11u; } if idx == 11u { return 12u; }
+            if idx == 12u { return 6u; } if idx == 13u { return 8u; } if idx == 14u { return 3u; }
+            return 13u;
+        }
+        if r == 5u {
+            if idx == 0u { return 2u; } if idx == 1u { return 12u; } if idx == 2u { return 6u; } if idx == 3u { return 10u; }
+            if idx == 4u { return 0u; } if idx == 5u { return 11u; } if idx == 6u { return 8u; } if idx == 7u { return 3u; }
+            if idx == 8u { return 4u; } if idx == 9u { return 13u; } if idx == 10u { return 7u; } if idx == 11u { return 5u; }
+            if idx == 12u { return 15u; } if idx == 13u { return 14u; } if idx == 14u { return 1u; }
+            return 9u;
+        }
+        if r == 6u {
+            if idx == 0u { return 12u; } if idx == 1u { return 5u; } if idx == 2u { return 1u; } if idx == 3u { return 15u; }
+            if idx == 4u { return 14u; } if idx == 5u { return 13u; } if idx == 6u { return 4u; } if idx == 7u { return 10u; }
+            if idx == 8u { return 0u; } if idx == 9u { return 7u; } if idx == 10u { return 6u; } if idx == 11u { return 3u; }
+            if idx == 12u { return 9u; } if idx == 13u { return 2u; } if idx == 14u { return 8u; }
+            return 11u;
+        }
+        if r == 7u {
+            if idx == 0u { return 13u; } if idx == 1u { return 11u; } if idx == 2u { return 7u; } if idx == 3u { return 14u; }
+            if idx == 4u { return 12u; } if idx == 5u { return 1u; } if idx == 6u { return 3u; } if idx == 7u { return 9u; }
+            if idx == 8u { return 5u; } if idx == 9u { return 0u; } if idx == 10u { return 15u; } if idx == 11u { return 4u; }
+            if idx == 12u { return 8u; } if idx == 13u { return 6u; } if idx == 14u { return 2u; }
+            return 10u;
+        }
+        if r == 8u {
+            if idx == 0u { return 6u; } if idx == 1u { return 15u; } if idx == 2u { return 14u; } if idx == 3u { return 9u; }
+            if idx == 4u { return 11u; } if idx == 5u { return 3u; } if idx == 6u { return 0u; } if idx == 7u { return 8u; }
+            if idx == 8u { return 12u; } if idx == 9u { return 2u; } if idx == 10u { return 13u; } if idx == 11u { return 7u; }
+            if idx == 12u { return 1u; } if idx == 13u { return 4u; } if idx == 14u { return 10u; }
+            return 5u;
+        }
+        if idx == 0u { return 10u; } if idx == 1u { return 2u; } if idx == 2u { return 8u; } if idx == 3u { return 4u; }
+        if idx == 4u { return 7u; } if idx == 5u { return 6u; } if idx == 6u { return 1u; } if idx == 7u { return 5u; }
+        if idx == 8u { return 15u; } if idx == 9u { return 11u; } if idx == 10u { return 9u; } if idx == 11u { return 14u; }
+        if idx == 12u { return 3u; } if idx == 13u { return 12u; } if idx == 14u { return 13u; }
+        return 0u;
+    }
+
+    func compress256(
+        h: *uint32,
+        msg: *const uint32,
+        t0: uint32,
+        t1: uint32,
+        nullt: bool
+    ) {
+        var v: uint32[16];
+        var i: uint = 0u;
+        while i < 8u {
+            v[i] = h[i];
+            i += 1u;
+        }
+        v[8u] = c32Val(0u);
+        v[9u] = c32Val(1u);
+        v[10u] = c32Val(2u);
+        v[11u] = c32Val(3u);
+        v[12u] = c32Val(4u);
+        v[13u] = c32Val(5u);
+        v[14u] = c32Val(6u);
+        v[15u] = c32Val(7u);
+
+        if nullt == false {
+            v[12u] = v[12u] ^ t0;
+            v[13u] = v[13u] ^ t0;
+            v[14u] = v[14u] ^ t1;
+            v[15u] = v[15u] ^ t1;
+        }
+
+        var round: uint = 0u;
+        while round < 14u {
+            i = 0u;
+            while i < 4u {
+                let j = sigmaVal(round, i * 2u);
+                let k = sigmaVal(round, i * 2u + 1u);
+                let a = i;
+                let b = i + 4u;
+                let c = i + 8u;
+                let d = i + 12u;
+
+                v[a] = v[a] + v[b] + (msg[j] ^ c32Val(k));
+                v[d] = rotr32(v[d] ^ v[a], 16u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr32(v[b] ^ v[c], 12u32);
+                v[a] = v[a] + v[b] + (msg[k] ^ c32Val(j));
+                v[d] = rotr32(v[d] ^ v[a], 8u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr32(v[b] ^ v[c], 7u32);
+
+                i += 1u;
+            }
+
+            i = 0u;
+            while i < 4u {
+                let j = sigmaVal(round, (i + 4u) * 2u);
+                let k = sigmaVal(round, (i + 4u) * 2u + 1u);
+
+                var a: uint;
+                var b: uint;
+                var c: uint;
+                var d: uint;
+                if i == 0u { a = 0u; b = 5u; c = 10u; d = 15u; }
+                else if i == 1u { a = 1u; b = 6u; c = 11u; d = 12u; }
+                else if i == 2u { a = 2u; b = 7u; c = 8u; d = 13u; }
+                else { a = 3u; b = 4u; c = 9u; d = 14u; }
+
+                v[a] = v[a] + v[b] + (msg[j] ^ c32Val(k));
+                v[d] = rotr32(v[d] ^ v[a], 16u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr32(v[b] ^ v[c], 12u32);
+                v[a] = v[a] + v[b] + (msg[k] ^ c32Val(j));
+                v[d] = rotr32(v[d] ^ v[a], 8u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr32(v[b] ^ v[c], 7u32);
+
+                i += 1u;
+            }
+
+            round += 1u;
+        }
+
+        i = 0u;
+        while i < 16u {
+            h[i % 8u] = h[i % 8u] ^ v[i];
+            i += 1u;
+        }
+    }
+
+    func compress512(
+        h: *uint64,
+        msg: *const uint64,
+        t0: uint64,
+        t1: uint64,
+        nullt: bool
+    ) {
+        var v: uint64[16];
+        var i: uint = 0u;
+        while i < 8u {
+            v[i] = h[i];
+            i += 1u;
+        }
+        v[8u] = c64Val(0u);
+        v[9u] = c64Val(1u);
+        v[10u] = c64Val(2u);
+        v[11u] = c64Val(3u);
+        v[12u] = c64Val(4u);
+        v[13u] = c64Val(5u);
+        v[14u] = c64Val(6u);
+        v[15u] = c64Val(7u);
+
+        if nullt == false {
+            v[12u] = v[12u] ^ t0;
+            v[13u] = v[13u] ^ t0;
+            v[14u] = v[14u] ^ t1;
+            v[15u] = v[15u] ^ t1;
+        }
+
+        var round: uint = 0u;
+        while round < 16u {
+            i = 0u;
+            while i < 4u {
+                let j = sigmaVal(round, i * 2u);
+                let k = sigmaVal(round, i * 2u + 1u);
+                let a = i;
+                let b = i + 4u;
+                let c = i + 8u;
+                let d = i + 12u;
+
+                v[a] = v[a] + v[b] + (msg[j] ^ c64Val(k));
+                v[d] = rotr64(v[d] ^ v[a], 32u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr64(v[b] ^ v[c], 25u32);
+                v[a] = v[a] + v[b] + (msg[k] ^ c64Val(j));
+                v[d] = rotr64(v[d] ^ v[a], 16u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr64(v[b] ^ v[c], 11u32);
+
+                i += 1u;
+            }
+
+            i = 0u;
+            while i < 4u {
+                let j = sigmaVal(round, (i + 4u) * 2u);
+                let k = sigmaVal(round, (i + 4u) * 2u + 1u);
+
+                var a: uint;
+                var b: uint;
+                var c: uint;
+                var d: uint;
+                if i == 0u { a = 0u; b = 5u; c = 10u; d = 15u; }
+                else if i == 1u { a = 1u; b = 6u; c = 11u; d = 12u; }
+                else if i == 2u { a = 2u; b = 7u; c = 8u; d = 13u; }
+                else { a = 3u; b = 4u; c = 9u; d = 14u; }
+
+                v[a] = v[a] + v[b] + (msg[j] ^ c64Val(k));
+                v[d] = rotr64(v[d] ^ v[a], 32u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr64(v[b] ^ v[c], 25u32);
+                v[a] = v[a] + v[b] + (msg[k] ^ c64Val(j));
+                v[d] = rotr64(v[d] ^ v[a], 16u32);
+                v[c] = v[c] + v[d];
+                v[b] = rotr64(v[b] ^ v[c], 11u32);
+
+                i += 1u;
+            }
+
+            round += 1u;
+        }
+
+        i = 0u;
+        while i < 16u {
+            h[i % 8u] = h[i % 8u] ^ v[i];
+            i += 1u;
+        }
+    }
+
+    func hashBlake256(msg: *const uint8, msgLen: uint, h0: uint32, h1: uint32, h2: uint32, h3: uint32, h4: uint32, h5: uint32, h6: uint32, h7: uint32, digestSize: uint, lastFlag: uint8) -> String {
+        var h: uint32[8];
+        h[0u] = h0;
+        h[1u] = h1;
+        h[2u] = h2;
+        h[3u] = h3;
+        h[4u] = h4;
+        h[5u] = h5;
+        h[6u] = h6;
+        h[7u] = h7;
+
+        var t0: uint32 = 0u32;
+        var t1: uint32 = 0u32;
+
+        let fullBlocks = msgLen / 64u;
+        var blockI: uint = 0u;
+        while blockI < fullBlocks {
+            var m: uint32[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU32BE(msg, blockI * 64u + wi * 4u);
+                wi += 1u;
+            }
+            compress256(h.data, m.data, t0, t1, false);
+            t0 += 512u32;
+            if t0 < 512u32 {
+                t1 += 1u32;
+            }
+            blockI += 1u;
+        }
+
+        let rem = msgLen % 64u;
+
+        var last: uint8[64];
+        var zi: uint = 0u;
+        while zi < 64u {
+            last[zi] = 0u8;
+            zi += 1u;
+        }
+        var ri: uint = 0u;
+        while ri < rem {
+            last[ri] = msg[fullBlocks * 64u + ri];
+            ri += 1u;
+        }
+        last[rem] = 0x80;
+
+        let lo = (t0 as uint64) + ((msgLen % 64u) as uint64 * 8u64);
+        let hi = t1 as uint64;
+
+        if rem < 55u {
+            last[55u] = lastFlag;
+            writeU64BE(last.data, 56u, lo);
+            var m: uint32[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU32BE(last.data, wi * 4u);
+                wi += 1u;
+            }
+            compress256(h.data, m.data, t0, t1, rem == 0u);
+        } else if rem == 55u {
+            last[55u] = (0x80 as uint8) | lastFlag;
+            writeU64BE(last.data, 56u, lo);
+            var m: uint32[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU32BE(last.data, wi * 4u);
+                wi += 1u;
+            }
+            compress256(h.data, m.data, t0, t1, false);
+        } else {
+            var m: uint32[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU32BE(last.data, wi * 4u);
+                wi += 1u;
+            }
+            compress256(h.data, m.data, t0, t1, false);
+
+            zi = 0u;
+            while zi < 64u {
+                last[zi] = 0u8;
+                zi += 1u;
+            }
+            last[55u] = lastFlag;
+            writeU64BE(last.data, 56u, lo);
+            wi = 0u;
+            while wi < 16u {
+                m[wi] = readU32BE(last.data, wi * 4u);
+                wi += 1u;
+            }
+            compress256(h.data, m.data, 0u32, 0u32, true);
+        }
+
+        var digest: uint8[32];
+        var di: uint = 0u;
+        while di < digestSize {
+            writeU32BE(digest.data, di, h[di / 4u]);
+            di += 4u;
+        }
+
+        return Hex::EncodeBytes(digest.data as *const char8, digestSize);
+    }
+
+    func hashBlake512(msg: *const uint8, msgLen: uint, h0: uint64, h1: uint64, h2: uint64, h3: uint64, h4: uint64, h5: uint64, h6: uint64, h7: uint64, digestSize: uint, lastFlag: uint8) -> String {
+        var h: uint64[8];
+        h[0u] = h0;
+        h[1u] = h1;
+        h[2u] = h2;
+        h[3u] = h3;
+        h[4u] = h4;
+        h[5u] = h5;
+        h[6u] = h6;
+        h[7u] = h7;
+
+        var t0: uint64 = 0u64;
+        var t1: uint64 = 0u64;
+
+        let fullBlocks = msgLen / 128u;
+        var blockI: uint = 0u;
+        while blockI < fullBlocks {
+            var m: uint64[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU64BE(msg, blockI * 128u + wi * 8u);
+                wi += 1u;
+            }
+            compress512(h.data, m.data, t0, t1, false);
+            t0 += 1024u64;
+            if t0 < 1024u64 {
+                t1 += 1u64;
+            }
+            blockI += 1u;
+        }
+
+        let rem = msgLen % 128u;
+
+        var last: uint8[128];
+        var zi: uint = 0u;
+        while zi < 128u {
+            last[zi] = 0u8;
+            zi += 1u;
+        }
+        var ri: uint = 0u;
+        while ri < rem {
+            last[ri] = msg[fullBlocks * 128u + ri];
+            ri += 1u;
+        }
+        last[rem] = 0x80;
+
+        let lo = t0 + (rem as uint64 * 8u64);
+        let hi = t1;
+
+        if rem < 111u {
+            last[111u] = lastFlag;
+            writeU64BE(last.data, 112u, hi);
+            writeU64BE(last.data, 120u, lo);
+            var m: uint64[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU64BE(last.data, wi * 8u);
+                wi += 1u;
+            }
+            compress512(h.data, m.data, t0, t1, rem == 0u);
+        } else if rem == 111u {
+            last[111u] = (0x80 as uint8) | lastFlag;
+            writeU64BE(last.data, 112u, hi);
+            writeU64BE(last.data, 120u, lo);
+            var m: uint64[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU64BE(last.data, wi * 8u);
+                wi += 1u;
+            }
+            compress512(h.data, m.data, t0, t1, false);
+        } else {
+            var m: uint64[16];
+            var wi: uint = 0u;
+            while wi < 16u {
+                m[wi] = readU64BE(last.data, wi * 8u);
+                wi += 1u;
+            }
+            compress512(h.data, m.data, t0, t1, false);
+
+            zi = 0u;
+            while zi < 128u {
+                last[zi] = 0u8;
+                zi += 1u;
+            }
+            last[111u] = lastFlag;
+            writeU64BE(last.data, 112u, hi);
+            writeU64BE(last.data, 120u, lo);
+            wi = 0u;
+            while wi < 16u {
+                m[wi] = readU64BE(last.data, wi * 8u);
+                wi += 1u;
+            }
+            compress512(h.data, m.data, 0u64, 0u64, true);
+        }
+
+        var digest: uint8[64];
+        var di: uint = 0u;
+        while di < digestSize {
+            writeU64BE(digest.data, di, h[di / 8u]);
+            di += 8u;
+        }
+
+        return Hex::EncodeBytes(digest.data as *const char8, digestSize);
+    }
+
+    func Blake256(message: char8[]) -> String {
+        return hashBlake256(message.data as *const uint8, message.length, 0x6A09E667u32, 0xBB67AE85u32, 0x3C6EF372u32, 0xA54FF53Au32, 0x510E527Fu32, 0x9B05688Cu32, 0x1F83D9ABu32, 0x5BE0CD19u32, 32u, 0x01);
+    }
+
+    func Blake224(message: char8[]) -> String {
+        return hashBlake256(message.data as *const uint8, message.length, 0xC1059ED8u32, 0x367CD507u32, 0x3070DD17u32, 0xF70E5939u32, 0xFFC00B31u32, 0x68581511u32, 0x64F98FA7u32, 0xBEFA4FA4u32, 28u, 0x00);
+    }
+
+    func Blake512(message: char8[]) -> String {
+        return hashBlake512(message.data as *const uint8, message.length, 0x6A09E667F3BCC908u64, 0xBB67AE8584CAA73Bu64, 0x3C6EF372FE94F82Bu64, 0xA54FF53A5F1D36F1u64, 0x510E527FADE682D1u64, 0x9B05688C2B3E6C1Fu64, 0x1F83D9ABFB41BD6Bu64, 0x5BE0CD19137E2179u64, 64u, 0x01);
+    }
+
+    func Blake384(message: char8[]) -> String {
+        return hashBlake512(message.data as *const uint8, message.length, 0xCBBB9D5DC1059ED8u64, 0x629A292A367CD507u64, 0x9159015A3070DD17u64, 0x152FECD8F70E5939u64, 0x67332667FFC00B31u64, 0x8EB44A8768581511u64, 0xDB0C2E0D64F98FA7u64, 0x47B5481DBEFA4FA4u64, 48u, 0x00);
+    }
+}

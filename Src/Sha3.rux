@@ -1,0 +1,176 @@
+/*
+    Rux standard library
+    Copyright © 2026 Rux Contributors
+    Licensed under the MIT License
+*/
+
+import Std::Hex;
+
+module Std::Hash::Sha3 {
+    struct Sha3 {}
+
+    func permute(st: *uint64) {
+        var round: uint = 0u;
+        while round < 24u {
+            var C: uint64[5];
+            var x: uint = 0u;
+            while x < 5u {
+                C[x] = st[x] ^ st[x + 5u] ^ st[x + 10u] ^ st[x + 15u] ^ st[x + 20u];
+                x += 1u;
+            }
+            var D: uint64[5];
+            x = 0u;
+            while x < 5u {
+                let prev = (x + 4u) % 5u;
+                let next = (x + 1u) % 5u;
+                D[x] = C[prev] ^ ((C[next] << 1u32) | (C[next] >> 63u32));
+                x += 1u;
+            }
+            var y: uint = 0u;
+            while y < 5u {
+                x = 0u;
+                while x < 5u {
+                    st[x + y * 5u] = st[x + y * 5u] ^ D[x];
+                    x += 1u;
+                }
+                y += 1u;
+            }
+
+            var lane: uint64 = st[1u];
+            var t: uint64;
+            var idx: uint = 0u;
+            while idx < 24u {
+                let j = [10u, 7u, 11u, 17u, 18u, 3u, 5u, 16u, 8u, 21u, 24u, 4u, 15u, 23u, 19u, 13u, 12u, 2u, 20u, 14u, 22u, 9u, 6u, 1u][idx];
+                let r = [1u32, 3u32, 6u32, 10u32, 15u32, 21u32, 28u32, 36u32, 45u32, 55u32, 2u32, 14u32, 27u32, 41u32, 56u32, 8u32, 25u32, 43u32, 62u32, 18u32, 39u32, 61u32, 20u32, 44u32][idx];
+                t = st[j];
+                st[j] = (lane << r) | (lane >> (64u32 - r));
+                lane = t;
+                idx += 1u;
+            }
+
+            y = 0u;
+            while y < 5u {
+                var row: uint64[5];
+                x = 0u;
+                while x < 5u {
+                    row[x] = st[x + y * 5u];
+                    x += 1u;
+                }
+                x = 0u;
+                while x < 5u {
+                    let xp1 = (x + 1u) % 5u;
+                    let xp2 = (x + 2u) % 5u;
+                    st[x + y * 5u] = row[x] ^ ((~row[xp1]) & row[xp2]);
+                    x += 1u;
+                }
+                y += 1u;
+            }
+
+            let rc = [0x0000000000000001, 0x0000000000008082, 0x800000000000808A, 0x8000000080008000, 0x000000000000808B, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009, 0x000000000000008A, 0x0000000000000088, 0x0000000080008009, 0x000000008000000A, 0x000000008000808B, 0x800000000000008B, 0x8000000000008089, 0x8000000000008003, 0x8000000000008002, 0x8000000000000080, 0x000000000000800A, 0x800000008000000A, 0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008][round];
+            st[0u] = st[0u] ^ rc;
+            round += 1u;
+        }
+    }
+
+    func hashBytes(rate: uint, outputLen: uint, msg: *const uint8, msgLen: uint) -> String {
+        var st: uint64[25];
+        var i: uint = 0u;
+        while i < 25u {
+            st[i] = 0u64;
+            i += 1u;
+        }
+
+        let blockBytes = rate;
+        let fullBlocks = msgLen / blockBytes;
+
+        var b: uint = 0u;
+        while b < fullBlocks {
+            let offset = b * blockBytes;
+            var li: uint = 0u;
+            while li < blockBytes / 8u {
+                let byteOff = offset + li * 8u;
+                st[li] = st[li]
+                    ^ ((msg[byteOff] as uint64)
+                    | ((msg[byteOff + 1u] as uint64) << 8u32)
+                    | ((msg[byteOff + 2u] as uint64) << 16u32)
+                    | ((msg[byteOff + 3u] as uint64) << 24u32)
+                    | ((msg[byteOff + 4u] as uint64) << 32u32)
+                    | ((msg[byteOff + 5u] as uint64) << 40u32)
+                    | ((msg[byteOff + 6u] as uint64) << 48u32)
+                    | ((msg[byteOff + 7u] as uint64) << 56u32));
+                li += 1u;
+            }
+            permute(st.data);
+            b += 1u;
+        }
+
+        let rem = msgLen % blockBytes;
+        var last: uint8[200];
+        i = 0u;
+        while i < 200u {
+            last[i] = 0u8;
+            i += 1u;
+        }
+        i = 0u;
+        while i < rem {
+            last[i] = msg[fullBlocks * blockBytes + i];
+            i += 1u;
+        }
+        last[rem] = 0x06;
+        last[blockBytes - 1u] = last[blockBytes - 1u] | 0x80u8;
+
+        var li: uint = 0u;
+        while li < blockBytes / 8u {
+            let byteOff = li * 8u;
+            let ptr = last.data;
+            st[li] = st[li]
+                ^ ((ptr[byteOff] as uint64)
+                | ((ptr[byteOff + 1u] as uint64) << 8u32)
+                | ((ptr[byteOff + 2u] as uint64) << 16u32)
+                | ((ptr[byteOff + 3u] as uint64) << 24u32)
+                | ((ptr[byteOff + 4u] as uint64) << 32u32)
+                | ((ptr[byteOff + 5u] as uint64) << 40u32)
+                | ((ptr[byteOff + 6u] as uint64) << 48u32)
+                | ((ptr[byteOff + 7u] as uint64) << 56u32));
+            li += 1u;
+        }
+
+        permute(st.data);
+
+        var out: uint8[200];
+        i = 0u;
+        while i < 200u {
+            out[i] = 0u8;
+            i += 1u;
+        }
+        var written: uint = 0u;
+        var laneI: uint = 0u;
+        while written < outputLen {
+            var byteI: uint = 0u;
+            while byteI < 8u && written < outputLen {
+                out[written] = (st[laneI] >> (byteI * 8u32)) as uint8;
+                written += 1u;
+                byteI += 1u;
+            }
+            laneI += 1u;
+        }
+
+        return Hex::EncodeBytes(out.data as *const char8, outputLen);
+    }
+
+    func Sha3_224(msg: char8[]) -> String {
+        return hashBytes(144u, 28u, msg.data as *const uint8, msg.length);
+    }
+
+    func Sha3_256(msg: char8[]) -> String {
+        return hashBytes(136u, 32u, msg.data as *const uint8, msg.length);
+    }
+
+    func Sha3_384(msg: char8[]) -> String {
+        return hashBytes(104u, 48u, msg.data as *const uint8, msg.length);
+    }
+
+    func Sha3_512(msg: char8[]) -> String {
+        return hashBytes(72u, 64u, msg.data as *const uint8, msg.length);
+    }
+}

@@ -271,15 +271,7 @@ module Std::Hash::Sha512 {
         *h7 += h;
     }
 
-    func hashSha512Bytes(message: *const uint8, msgLen: uint) -> String {
-            var h0: uint64 = 0x6A09E667F3BCC908;
-            var h1: uint64 = 0xBB67AE8584CAA73B;
-            var h2: uint64 = 0x3C6EF372FE94F82B;
-            var h3: uint64 = 0xA54FF53A5F1D36F1;
-            var h4: uint64 = 0x510E527FADE682D1;
-            var h5: uint64 = 0x9B05688C2B3E6C1F;
-            var h6: uint64 = 0x1F83D9ABFB41BD6B;
-            var h7: uint64 = 0x5BE0CD19137E2179;
+    func hashSha512Bytes(message: *const uint8, msgLen: uint, h0: uint64, h1: uint64, h2: uint64, h3: uint64, h4: uint64, h5: uint64, h6: uint64, h7: uint64, digestSize: uint) -> String {
 
             let fullBlocks = msgLen / BlockSize;
             var blockIndex: uint = 0u;
@@ -326,12 +318,16 @@ module Std::Hash::Sha512 {
             writeU64BE(digest.data, 48u, h6);
             writeU64BE(digest.data, 56u, h7);
 
-            return Hex::EncodeBytes(digest.data as *const char8, DigestSize);
+            return Hex::EncodeBytes(digest.data as *const char8, digestSize);
     }
 
     extend Sha512 {
         func Hash(message: char8[]) -> String {
-            return hashSha512Bytes(message.data as *const uint8, message.length);
+            return hashSha512Bytes(message.data as *const uint8, message.length, 0x6A09E667F3BCC908, 0xBB67AE8584CAA73B, 0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1, 0x510E527FADE682D1, 0x9B05688C2B3E6C1F, 0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179, 64u);
         }
+    }
+
+    func Sha384(message: char8[]) -> String {
+        return hashSha512Bytes(message.data as *const uint8, message.length, 0xCBBB9D5DC1059ED8, 0x629A292A367CD507, 0x9159015A3070DD17, 0x152FECD8F70E5939, 0x67332667FFC00B31, 0x8EB44A8768581511, 0xDB0C2E0D64F98FA7, 0x47B5481DBEFA4FA4, 48u);
     }
 }
