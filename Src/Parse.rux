@@ -280,4 +280,46 @@ module Std::Parse {
 
         return has_digits;
     }
+
+    func IsFloat(num: char8[]) -> bool8 {
+        var started: bool8 = false;
+        var has_digits: bool8 = false;
+        var has_dot: bool8 = false;
+        var has_exponent: bool8 = false;
+        var exponent_started: bool8 = false;
+
+        for ch in num {
+            if (ch as int8 <= 32) { continue; }
+
+            if (!started) {
+                started = true;
+                if (ch == '-' || ch == '+') { continue; }
+            }
+
+            if (ch == '.') {
+                if (has_dot || has_exponent) { return false; }
+                has_dot = true;
+                continue;
+            }
+
+            if (ch == 'e' || ch == 'E') {
+                if (has_exponent || !has_digits) { return false; }
+                has_exponent = true;
+                continue;
+            }
+
+            if (has_exponent && !exponent_started) {
+                if (ch == '-' || ch == '+') {
+                    exponent_started = true;
+                    continue;
+                }
+            }
+
+            if (ch < '0' || ch > '9') { return false; }
+            has_digits = true;
+            if (has_exponent) { exponent_started = true; }
+        }
+
+        return has_digits;
+    }
 }
