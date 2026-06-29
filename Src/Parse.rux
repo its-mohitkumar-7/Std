@@ -6,6 +6,10 @@
 
 module Std::Parse {
     func ParseInt(str: char8[]) -> int {
+        if(!IsInt(str)) {
+            return -1;
+        }
+
         if str.length == 0 {
             return 0;
         }
@@ -34,6 +38,10 @@ module Std::Parse {
     }
 
     func ParseFloat(str: char8[]) -> float {
+        if(!IsFloat(str)){
+            return -1.0;
+        }
+        
         if str.length == 0 {
             return 0.0;
         }
