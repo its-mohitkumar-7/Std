@@ -255,4 +255,29 @@ module Std::Parse {
 
         return false;
     }
+
+    func IsInt(num: char8[]) -> bool8 {
+        var started: bool8 = false;
+        var has_digits: bool8 = false;
+
+        for ch in num {
+            if (ch as int8 <= 32) {
+                continue;
+            }
+
+            if (!started) {
+                started = true;
+                if (ch == '-' || ch == '+') {
+                    continue;
+                }
+            }
+
+            if (ch < '0' || ch > '9') {
+                return false;
+            }
+            has_digits = true;
+        }
+
+        return has_digits;
+    }
 }
