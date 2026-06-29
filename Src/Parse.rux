@@ -109,4 +109,150 @@ module Std::Parse {
 
         return sign ? -result : result;
     }
+
+    func EqIgnoreCase(a: int8, lower: int8, upper: int8) -> bool8 {
+        if (a == lower) {
+            return true;
+        }
+
+        if (a == upper) {
+            return true;
+        }
+
+        return false;
+    }
+
+    func ParseBool(str: char8[]) -> bool8 {
+        var buf: char8[5];
+        var len: uint = 0;
+
+        for ch in str {
+            if ((ch as int8) <= 32) {
+                continue;
+            }
+
+            if (len >= 5) {
+                return false;
+            }
+
+            buf[len] = ch;
+            len += 1;
+        }
+
+        if (len == 1) {
+            let a = buf[0] as int8;
+
+            if (a == 49) {
+                return true;
+            }
+
+            if (a == 48) {
+                return false;
+            }
+
+            if (EqIgnoreCase(a, 116, 84)) {
+                return true;
+            }
+
+            if (EqIgnoreCase(a, 102, 70)) {
+                return false;
+            }
+
+            if (EqIgnoreCase(a, 121, 89)) {
+                return true;
+            }
+
+            if (EqIgnoreCase(a, 110, 78)) {
+                return false;
+            }
+
+            return false;
+        }
+
+        if (len == 2) {
+            let a = buf[0] as int8;
+            let b = buf[1] as int8;
+
+            if (EqIgnoreCase(a, 111, 79)) {
+                if (EqIgnoreCase(b, 110, 78)) {
+                    return true;
+                }
+            }
+
+            if (EqIgnoreCase(a, 110, 78)) {
+                if (EqIgnoreCase(b, 111, 79)) {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        if (len == 3) {
+            let a = buf[0] as int8;
+            let b = buf[1] as int8;
+            let c = buf[2] as int8;
+
+            if (EqIgnoreCase(a, 121, 89)) {
+                if (EqIgnoreCase(b, 101, 69)) {
+                    if (EqIgnoreCase(c, 115, 83)) {
+                        return true;
+                    }
+                }
+            }
+
+            if (EqIgnoreCase(a, 111, 79)) {
+                if (EqIgnoreCase(b, 102, 70)) {
+                    if (EqIgnoreCase(c, 102, 70)) {
+                        return false;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        if (len == 4) {
+            let a = buf[0] as int8;
+            let b = buf[1] as int8;
+            let c = buf[2] as int8;
+            let d = buf[3] as int8;
+
+            if (EqIgnoreCase(a, 116, 84)) {
+                if (EqIgnoreCase(b, 114, 82)) {
+                    if (EqIgnoreCase(c, 117, 85)) {
+                        if (EqIgnoreCase(d, 101, 69)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        if (len == 5) {
+            let a = buf[0] as int8;
+            let b = buf[1] as int8;
+            let c = buf[2] as int8;
+            let d = buf[3] as int8;
+            let e = buf[4] as int8;
+
+            if (EqIgnoreCase(a, 102, 70)) {
+                if (EqIgnoreCase(b, 97, 65)) {
+                    if (EqIgnoreCase(c, 108, 76)) {
+                        if (EqIgnoreCase(d, 115, 83)) {
+                            if (EqIgnoreCase(e, 101, 69)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        return false;
+    }
 }
