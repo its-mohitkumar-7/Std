@@ -32,4 +32,81 @@ module Std::Parse {
         
         return negative ? -result : result;
     }
+
+    func ParseFloat(str: char8[]) -> float {
+        if str.length == 0 {
+            return 0.0;
+        }
+
+        var sign: bool = false;
+        var IntegerPart: uint = 0u;
+        var DecimalPoint: bool8 = false;
+        var FractionalPart: float64 = 0.0f64;
+
+        var ExponentVariable: bool8 = false;
+        var ExponentSign: bool8 = false;
+        var ExponentValue: uint = 0u;
+
+        var start: uint = 0u;
+
+        if str.data[0] == c8'-' {
+            sign = true;
+            start = 1u;
+        }
+
+        var divisor: float64 = 10.0f64;
+
+        var i = start;
+        while i < str.length {
+            let ch = str.data[i];
+
+            if ch >= c8'0' && ch <= c8'9' && !DecimalPoint && !ExponentVariable {
+                IntegerPart = IntegerPart * 10u + ((ch as uint) - 48u);
+            }
+
+            if ch == c8'.' && !ExponentVariable {
+                DecimalPoint = true;
+            }
+
+            if ch >= c8'0' && ch <= c8'9' && DecimalPoint && !ExponentVariable {
+                var digit = ((ch as uint) - 48u) as float64;
+                FractionalPart += digit / divisor;
+                divisor *= 10.0f64;
+            }
+
+            if ch == c8'e' || ch == c8'E' {
+                ExponentVariable = true;
+            }
+
+            if ExponentVariable && ch == c8'-' {
+                ExponentSign = true;
+            }
+
+            if ExponentVariable && ch >= c8'0' && ch <= c8'9' {
+                ExponentValue = ExponentValue * 10u + ((ch as uint) - 48u);
+            }
+
+            i += 1u;
+        }
+
+        var result: float64 = IntegerPart as float64 + FractionalPart;
+
+        if ExponentValue > 0 {
+            var power: float64 = 1.0f64;
+
+            var j: uint = 0u;
+            while j < ExponentValue {
+                power *= 10.0f64;
+                j += 1u;
+            }
+
+            if ExponentSign {
+                result /= power;
+            } else {
+                result *= power;
+            }
+        }
+
+        return sign ? -result : result;
+    }
 }
