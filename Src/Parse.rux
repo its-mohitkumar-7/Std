@@ -1,0 +1,35 @@
+/*
+    Rux standard library
+    Copyright © 2026 Rux Contributors
+    Licensed under the MIT License
+*/
+
+module Std::Parse {
+    func ParseInt(str: char8[]) -> int {
+        if str.length == 0 {
+            return 0;
+        }
+        
+        var result: int = 0;
+        var negative = false;
+        var start: uint = 0u;
+        
+        if str.data[0] == c8'-' {
+            negative = true;
+            start = 1u;
+        } else if str.data[0] == c8'+' {
+            start = 1u;
+        }
+        
+        var i = start;
+        while i < str.length {
+            let ch = str.data[i];
+            if ch >= c8'0' && ch <= c8'9' {
+                result = result * 10 + (ch as int - 48);
+            }
+            i += 1u;
+        }
+        
+        return negative ? -result : result;
+    }
+}
