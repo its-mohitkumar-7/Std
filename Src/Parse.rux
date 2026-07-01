@@ -5,13 +5,18 @@
 */
 
 module Std::Parse {
-    func ParseInt(str: char8[]) -> int {
+    func TestTuple() -> (float, bool8) {
+    var x: float64 = 1.0f64;
+    x += 0.0f64;   // force runtime computation
+    return (x as float, true);
+}
+    func ParseInt(str: char8[]) -> (int, bool8) {
         if(!IsInt(str)) {
-            return -1;
+            return (-1, false);
         }
 
         if str.length == 0 {
-            return 0;
+            return (0, false);
         }
         
         var result: int = 0;
@@ -33,17 +38,21 @@ module Std::Parse {
             }
             i += 1u;
         }
-        
-        return negative ? -result : result;
+
+        if(negative) {
+            return (-result, true);
+        }
+
+        return (result, true);
     }
 
-    func ParseFloat(str: char8[]) -> float {
+    func ParseFloat(str: char8[]) -> (float, bool8) {
         if(!IsFloat(str)){
-            return -1.0;
+            return (-1.0, false);
         }
-        
+
         if str.length == 0 {
-            return 0.0;
+            return (0.0, false);
         }
 
         var sign: bool = false;
@@ -115,19 +124,14 @@ module Std::Parse {
             }
         }
 
-        return sign ? -result : result;
+        if(sign) {
+            return (-result, true);
+        }
+        return (result, true);
     }
 
     func EqIgnoreCase(a: int8, lower: int8, upper: int8) -> bool8 {
-        if (a == lower) {
-            return true;
-        }
-
-        if (a == upper) {
-            return true;
-        }
-
-        return false;
+        return (a == lower || a == upper);
     }
 
     func ParseBool(str: char8[]) -> bool8 {
@@ -264,6 +268,74 @@ module Std::Parse {
         return false;
     }
 
+    func ParseNum(num: char8[], base: int8) -> int {
+        let radix = base as int;
+
+        if (radix < 2 || radix > 36) {
+            return -1;
+        }
+
+        var res: int = 0;
+        var negative: bool8 = false;
+        var started: bool8 = false;
+        var parsed: bool8 = false;
+
+        for ch in num {
+            if ((ch as int8) <= 32) {
+                continue;
+            }
+
+            if (!started) {
+                started = true;
+
+                if (ch == '-' as char8) {
+                    negative = true;
+                    continue;
+                }
+
+                if (ch == '+' as char8) {
+                    continue;
+                }
+            }
+
+            var digit: int = -1;
+
+            if (ch >= '0' as char8 && ch <= '9' as char8) {
+                digit = (ch as int) - 48;
+            }
+            else if (ch >= 'A' as char8 && ch <= 'Z' as char8) {
+                digit = ((ch as int) - 65) + 10;
+            }
+            else if (ch >= 'a' as char8 && ch <= 'z' as char8) {
+                digit = ((ch as int) - 97) + 10;
+            }
+            else {
+                return -1;
+            }
+
+            if (digit >= radix) {
+                return -1;
+            }
+
+            if (res > (((2147483647 as int) - digit) / radix)) {
+                return -1;
+            }
+
+            res = (res * radix) + digit;
+            parsed = true;
+        }
+
+        if (!parsed) {
+            return -1;
+        }
+
+        if (negative) {
+            return -res;
+        }
+
+        return res;
+    }
+
     func IsInt(num: char8[]) -> bool8 {
         var started: bool8 = false;
         var has_digits: bool8 = false;
@@ -294,10 +366,13 @@ module Std::Parse {
         var has_digits: bool8 = false;
         var has_dot: bool8 = false;
         var has_exponent: bool8 = false;
-        var exponent_started: bool8 = false;
+        var seen_exponent_sign_or_digit: bool8 = false;
+        var has_exponent_digits: bool8 = false;
 
         for ch in num {
-            if (ch as int8 <= 32) { continue; }
+            if(!has_digits){
+                if (ch as int8 <= 32) { continue; }
+            }
 
             if (!started) {
                 started = true;
@@ -316,16 +391,24 @@ module Std::Parse {
                 continue;
             }
 
-            if (has_exponent && !exponent_started) {
+            if (has_exponent && !seen_exponent_sign_or_digit) {
                 if (ch == '-' || ch == '+') {
-                    exponent_started = true;
+                    seen_exponent_sign_or_digit = true;
                     continue;
                 }
             }
 
             if (ch < '0' || ch > '9') { return false; }
             has_digits = true;
-            if (has_exponent) { exponent_started = true; }
+            
+            if (has_exponent) {
+                seen_exponent_sign_or_digit = true;
+                has_exponent_digits = true;
+            }
+        }
+
+        if (has_exponent && !has_exponent_digits) {
+            return false;
         }
 
         return has_digits;
