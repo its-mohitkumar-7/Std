@@ -1,0 +1,26 @@
+module Std::OS {
+    @[Target("Windows")]
+    func Name() -> char8[] {
+        return "Windows";
+    }
+
+    @[Target("MacOS")]
+    func Name() -> char8[] {
+        return "MacOS";
+    }
+
+    @[Target("Linux")]
+    func Name() -> char8[] {
+        return "Linux";
+    }
+
+    @[Target("BSD")]
+    func Name() -> char8[] {
+        return "BSD";
+    }
+
+    @[Target("Illumos")]
+    func Name() -> char8[] {
+        return "Illumos";
+    }
+}
