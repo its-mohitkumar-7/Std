@@ -1,0 +1,111 @@
+/*
+    Rux standard library
+    Copyright © 2026 Rux Contributors
+    Licensed under the MIT License
+*/
+
+module Std {
+    import Std::Memory::{ Alloc, Realloc, Free, Copy };
+
+    struct Vector {
+        data: *uint8;
+        length: uint;
+        capacity: uint;
+        elementSize: uint;
+    }
+
+    extend Vector {
+        func New(elementSize: uint) -> Vector {
+            return Vector {
+                data: null,
+                length: 0u,
+                capacity: 0u,
+                elementSize: elementSize
+            };
+        }
+
+        func Init(self, elementSize: uint) {
+            self.data = null;
+            self.length = 0u;
+            self.capacity = 0u;
+            self.elementSize = elementSize;
+        }
+
+        func Free(self) {
+            if self.data != null {
+                Free(self.data as *opaque);
+                self.data = null;
+            }
+            self.length = 0u;
+            self.capacity = 0u;
+        }
+
+        func Len(self) -> uint {
+            return self.length;
+        }
+
+        func Cap(self) -> uint {
+            return self.capacity;
+        }
+
+        func IsEmpty(self) -> bool {
+            return self.length == 0u;
+        }
+
+        func Push(self, element: *const opaque) {
+            self.Reserve(1u);
+            let dest = self.data + self.length * self.elementSize;
+            Copy(dest as *opaque, element, self.elementSize);
+            self.length = self.length + 1u;
+        }
+
+        func Pop(self, outElement: *opaque) {
+            if self.length == 0u {
+                return;
+            }
+            let index = self.length - 1u;
+            let src = self.data + index * self.elementSize;
+            if outElement != null {
+                Copy(outElement, src as *const opaque, self.elementSize);
+            }
+            self.length = index;
+        }
+
+        func Get(self, index: uint) -> *opaque {
+            if index >= self.length {
+                return null;
+            }
+            return (self.data + index * self.elementSize) as *opaque;
+        }
+
+        func Set(self, index: uint, element: *const opaque) {
+            if index >= self.length {
+                return;
+            }
+            let dest = self.data + index * self.elementSize;
+            Copy(dest as *opaque, element, self.elementSize);
+        }
+
+        func Clear(self) {
+            self.length = 0u;
+        }
+
+        func Reserve(self, additional: uint) {
+            let required = self.length + additional;
+            if required <= self.capacity {
+                return;
+            }
+            var capacity = self.capacity;
+            if capacity == 0u {
+                capacity = 16u;
+            }
+            while capacity < required {
+                capacity *= 2u;
+            }
+            self.data = self.data == null
+                ? Alloc(capacity * self.elementSize) as *uint8
+                : Realloc(self.data as *opaque, capacity * self.elementSize) as *uint8;
+            self.capacity = capacity;
+        }
+    }
+}
