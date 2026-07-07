@@ -36,6 +36,21 @@ module Std::Math {
     {
         return x + y;
     }
+    
+    func KahanSum(x: float64...) -> float64
+    {
+    	var sum: float64 = 0.0f64;
+    	var cmp: float64 = 0.0f64;
+    	
+    	for val in x {
+    		var y: float64 = val - cmp;
+    		var tmp: float64 = sum + y;
+    		
+    		cmp = (tmp - sum) - y;
+    		sum = tmp;
+    	}
+    	return sum;
+    }
 
     func sin64(x: float64) -> float64
     {
@@ -538,5 +553,19 @@ module Std::Math {
     func Round32(x: float32) -> float32
     {
         return Round(x as float64) as float32;
+    }
+    
+    func KahanSum(x: float32...) -> float32
+    {
+    	var sum: float32 = 0.0f32;
+    	var cmp: float32 = 0.0f32;
+    	for val in x {
+    		var y: float32 = val - cmp;
+    		var tmp: float32 = sum + y;
+    		
+    		cmp = (tmp - sum) - y;
+    		sum = tmp;
+    	}
+    	return sum;
     }
 }
