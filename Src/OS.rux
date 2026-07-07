@@ -1,4 +1,4 @@
-module Std::OS {
+module Std::Os {
     @[Target("Windows")]
     func Name() -> char8[] {
         return "Windows";
