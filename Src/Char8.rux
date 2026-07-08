@@ -11,9 +11,19 @@ module Std {
         return String::From(buf.data, 1u);
     }
 
+    func ToString(value: char8[]) -> String {
+        return String::From(value);
+    }
+
     extend char8 : Display {
         func ToString(self) -> String {            
             return ToString(*self);
         }
     }
+
+    extend char8[] : Display {
+    func ToString(self) -> String {
+        return String::From(self);
+    }
+}
 }
