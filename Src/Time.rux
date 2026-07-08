@@ -40,12 +40,9 @@ import Windows::{
     Sleep,
     GetTickCount64,
     GetLocalTime,
-    GetSystemTime,
-    SystemTime
+    GetSystemTime    
 };
 
-
-@[Target("Linux")]
 struct SystemTime {
     year: uint16;
     month: uint16;
@@ -56,43 +53,6 @@ struct SystemTime {
     second: uint16;
     milliseconds: uint16;
 }
-
-@[Target("Illumos")]
-struct SystemTime {
-    year: uint16;
-    month: uint16;
-    dayOfWeek: uint16;
-    day: uint16;
-    hour: uint16;
-    minute: uint16;
-    second: uint16;
-    milliseconds: uint16;
-}
-
-@[Target("BSD")]
-struct SystemTime {
-    year: uint16;
-    month: uint16;
-    dayOfWeek: uint16;
-    day: uint16;
-    hour: uint16;
-    minute: uint16;
-    second: uint16;
-    milliseconds: uint16;
-}
-
-@[Target("MacOS")]
-struct SystemTime {
-    year: uint16;
-    month: uint16;
-    dayOfWeek: uint16;
-    day: uint16;
-    hour: uint16;
-    minute: uint16;
-    second: uint16;
-    milliseconds: uint16;
-}
-
 
 @[Target("Windows")]
 func SleepMs(ms: uint32) {
